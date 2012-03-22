@@ -3,6 +3,7 @@ import time
 import datetime
 import sys
 import shutil
+import optparse
 from stat import *
 
 jobs_dir = '~/apps/jobs'
@@ -87,31 +88,41 @@ def backup_empty_execution_files(exec_dir, backup_dir):
   return None
 
 
-################################
-## Running
-################################
-if not os.path.exists(backup_dir): 
-  print 'ERROR -- Backup directory does not exist: %s' % backup_dir
-  sys.exit()
+def main():
 
-paths = init_backup_dirs(backup_dir)
+  option_parser = optparse.OptionParser()
 
-jobs_dir = os.path.expanduser(jobs_dir)
-print 'Jobs dir = %s' % jobs_dir
+#  p.add_option('--dryRun', '-d') 
+  option_parser.add_option("-d", "--dryRun", action="store_true", dest="dry_run")
+  option_parser.add_option("-l", "--logs", dest="logs_dir", help="Azkaban's logs directory", metavar="LOGS_DIR")
+  option_parser.add_option("-j", "--jobs", dest="jobs_dir", help="Azkaban's jobs directory", metavar="JOBS_DIR")
+  options, arguments = option_parser.parse_args()
 
-exec_dir = os.path.join(jobs_dir, 'executions')
-print 'Executions dir = %s' % exec_dir
+  if not os.path.exists(backup_dir): 
+    print 'ERROR -- Backup directory does not exist: %s' % backup_dir
+    sys.exit()
 
-print '*** Backing up old execution files - begin ***'
-backup_old_execution_files(exec_dir, paths[1])
-print '*** Backing up old execution files - end ***'
+  global jobs_dir
 
-print '*** Backing up empty execution files - begin ***'
-backup_empty_execution_files(exec_dir, paths[1])
-print '*** Backing up empty execution files - end ***'
+  paths = init_backup_dirs(backup_dir)
 
-# testing
+  jobs_dir = os.path.expanduser(jobs_dir)
+  print 'Jobs dir = %s' % jobs_dir
+
+  exec_dir = os.path.join(jobs_dir, 'executions')
+  print 'Executions dir = %s' % exec_dir
+
+  print '*** Backing up old execution files - begin ***'
+  backup_old_execution_files(exec_dir, paths[1])
+  print '*** Backing up old execution files - end ***'
+
+  print '*** Backing up empty execution files - begin ***'
+  backup_empty_execution_files(exec_dir, paths[1])
+  print '*** Backing up empty execution files - end ***'
+
+# Running
 if __name__ == '__main__':
-  print is_execution_file('/Users/aogonevskiy/apps/jobs/executions/1.json')
-  print is_execution_file('/Users/aogonevskiy/apps/jobs/executions/1.exe')
-  print is_execution_file('/Users/aogonevskiy/apps/jobs/executions/A123.json')
+  main()
+#    print is_execution_file('/Users/aogonevskiy/apps/jobs/executions/1.json')
+#    print is_execution_file('/Users/aogonevskiy/apps/jobs/executions/1.exe')
+#    print is_execution_file('/Users/aogonevskiy/apps/jobs/executions/A123.json')
