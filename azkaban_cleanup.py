@@ -3,14 +3,15 @@ import time
 import datetime
 import sys
 import shutil
-# import optparse
+import optparse
 from stat import ST_SIZE, ST_MTIME
 import tarfile
 
-jobs_dir = '~/apps/azkaban/jobs'
-logs_dir = '~/apps/azkaban/logs'
-days_to_keep=14
-backup_dir = '/tmp/azkaban_backup'
+jobs_dir = None
+logs_dir = None
+backup_dir = None
+days_to_keep=None
+dry_run=False
 have_files_to_backup=False
 
 def is_execution_file(full_path):
@@ -138,36 +139,64 @@ def backup_old_log_files(logs_dir, backup_dir):
 
 def main():
     
+    
+    option_parser = optparse.OptionParser()
+
+    option_parser.add_option("-d", "--dryRun", action="store_true", dest="dry_run", default=False, help="Not supported")
+    option_parser.add_option("-l", "--logs", dest="logs_dir", help="Azkaban's logs directory (required)", metavar="<LOGS_DIR>")
+    option_parser.add_option("-j", "--jobs", dest="jobs_dir", help="Azkaban's jobs directory (required)", metavar="<JOBS_DIR>")
+    option_parser.add_option("-b", "--backupdir", dest="backup_dir", help="Directory where to store backup files (required)", metavar="<OUTPUT_BACKUP_DIR>")
+    option_parser.add_option("-n", "--ndays", dest="days_to_keep", help="Number of days to keep (optional). Default = 14", metavar="<NDAYS>", default=13)
+    (options, arguments) = option_parser.parse_args() #@UnusedVariable
+    
+    if (options.logs_dir is None) or (options.jobs_dir is None) or (options.backup_dir is None):
+        print 'ERROR: Mandatory option is missing'
+        option_parser.print_help()
+        sys.exit(-1)
+
+    """ AS SOON AS YOU WRITE TO A VARIABLE, that variable is AUTOMATICALLY considered LOCAL to the function block in which its declared."""        
+    global dry_run
+    global jobs_dir
+    global logs_dir
+    global backup_dir
+    global days_to_keep
+
+    dry_run = options.dry_run
+    jobs_dir=options.jobs_dir
+    logs_dir=options.logs_dir
+    backup_dir = options.backup_dir
+    days_to_keep = options.days_to_keep
+
     print '####################################'
     print '######### BACKUP - begin ###########'
     print '####################################'
     
-#    option_parser = optparse.OptionParser()
-#    
-#    #  p.add_option('--dryRun', '-d') 
-#    option_parser.add_option("-d", "--dryRun", action="store_true", dest="dry_run")
-#    option_parser.add_option("-l", "--logs", dest="logs_dir", help="Azkaban's logs directory", metavar="LOGS_DIR")
-#    option_parser.add_option("-j", "--jobs", dest="jobs_dir", help="Azkaban's jobs directory", metavar="JOBS_DIR")
-#    options, arguments = option_parser.parse_args()
-    
     if os.name == 'nt':
         print 'ERROR: Looks like you\'re running Windows OS. Script was not tested in Windows so I better exit. If you still need to run it just comment out OS check'
         sys.exit(-1)
-        
+    
+    backup_dir = os.path.expanduser(backup_dir)    
     if not os.path.exists(backup_dir): 
         print 'ERROR: Backup directory does not exist: %s' % backup_dir
         sys.exit(-1)
-    
+        
     paths = init_backup_dirs(backup_dir)
 
-    global jobs_dir
-    """ AS SOON AS YOU WRITE TO A VARIABLE, that variable is AUTOMATICALLY considered LOCAL to the function block in which its declared."""        
+    # Checking if jobs directory exists
     jobs_dir = os.path.expanduser(jobs_dir)
     print 'Jobs dir = %s' % jobs_dir
+    if not os.path.exists(jobs_dir): 
+        print 'ERROR: Jobs directory does not exist: %s' % jobs_dir
+        sys.exit(-1)
+    
 
-    global logs_dir
+    # Checking if logs directory exists
     logs_dir = os.path.expanduser(logs_dir)
     print 'Logs dir = %s' % logs_dir
+    if not os.path.exists(logs_dir): 
+        print 'ERROR: Logs directory does not exist: %s' % logs_dir
+        sys.exit(-1)
+
         
     exec_dir = os.path.join(jobs_dir, 'executions')
     print 'Executions dir = %s' % exec_dir
