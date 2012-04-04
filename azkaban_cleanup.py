@@ -8,8 +8,9 @@ from stat import ST_SIZE, ST_MTIME
 
 jobs_dir = '~/apps/jobs'
 logs_dir = '~/apps/logs'
-days_to_keep=7
+days_to_keep=20
 backup_dir = '/tmp/azkaban_backup'
+have_files_to_backup=False
 
 def is_execution_file(full_path):
     """ method checks if file is an Azkaban execution file """
@@ -50,11 +51,13 @@ def init_backup_dirs(root_backup_dir):
     print 'Creating executions backup directory = %s' % execs_backup_path
     os.makedirs(logs_backup_path)
     os.makedirs(execs_backup_path)
-    return (logs_backup_path,execs_backup_path)
+    return (logs_backup_path,execs_backup_path, path)
 
 
 def backup_old_execution_files(exec_dir, backup_dir, days_to_keep=7):
     """ method moves execution files that are older than <days_to_keep> to the <backup_dir> """
+
+    global have_files_to_backup
     
     exec_files = get_execution_files(exec_dir)
     print '# of files in the executions dir = %d' % len(exec_files)
@@ -68,9 +71,15 @@ def backup_old_execution_files(exec_dir, backup_dir, days_to_keep=7):
     for f in old_files:
         print 'Moving %s to %s' % (f,backup_dir)
         shutil.move(f,backup_dir)
+        
+        have_files_to_backup=True
+        
+    return None
 
 def backup_empty_execution_files(exec_dir, backup_dir):
     """ method moves zero sized execution files into the <backup_dir> """
+    
+    global have_files_to_backup
     
     exec_files = get_execution_files(exec_dir)
     print '# of files in the executions dir = %d' % len(exec_files)
@@ -84,9 +93,14 @@ def backup_empty_execution_files(exec_dir, backup_dir):
     for f in old_files:
         print 'Moving %s to %s' % (f,backup_dir)
         shutil.move(f,backup_dir)
+        
+        have_files_to_backup=True
+        
     return None
 
 def backup_old_log_files(logs_dir, backup_dir):
+    
+    global have_files_to_backup
     
     # listing all the files
     job_dirs = os.listdir(logs_dir)
@@ -98,14 +112,28 @@ def backup_old_log_files(logs_dir, backup_dir):
     job_dirs = [os.path.join(logs_dir,f) for f in job_dirs if os.path.isdir(f)]
     print '# of job log directories %s' % len(job_dirs)
     
-    for f in job_dirs:
-        #print f
-#        if len(f) == 24: print 
-        print os.listdir(f)
-    
-    
-    
-    # print job_log_dirs
+    for d in job_dirs:
+        print 'Procesing %s' % d
+
+        dirs = os.listdir(d)
+        
+        # filtering old dirs (length, isdir and older than days_to_keep)
+        dirs = [os.path.join(d, f) for f in dirs if len(f) == 23 and os.path.isdir(os.path.join(d, f)) and (time.time() - time.mktime(time.strptime(f[0:19], "%m-%d-%Y.%H.%M.%S"))) > days_to_keep * 60 * 60 * 24]
+        print 'Found %s old directories' % len(dirs)
+        
+        # moving files to backup directory
+        for f in dirs:
+            
+            # adding job name to the target_path
+            target_path = os.path.join(backup_dir,f.split('/')[-2])
+            
+            print 'Moving %s to %s' % (f,target_path)
+            shutil.move(f,target_path)
+            
+            have_files_to_backup=True
+            
+    return None
+                
 
 def main():
 
@@ -147,14 +175,10 @@ def main():
     backup_old_log_files(logs_dir, paths[0])
     print '*** Backing up old log files - end ***'
     
-#    s = "03-09-2012.00.01.07.969"
-#    print s
-#    s = s[0:19]
-#    print s
-#    print time.mktime(time.strptime(s, "%m-%d-%Y.%H.%M.%S"))
-#    print time.time()
-
-
+    if not have_files_to_backup:
+        print 'Nothing was backed up - removing backup dir = %s' % paths[2] 
+        shutil.rmtree(paths[2])
+        
 # Running
 
 if __name__ == '__main__':
