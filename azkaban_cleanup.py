@@ -5,10 +5,11 @@ import sys
 import shutil
 # import optparse
 from stat import ST_SIZE, ST_MTIME
+import tarfile
 
-jobs_dir = '~/apps/jobs'
-logs_dir = '~/apps/logs'
-days_to_keep=20
+jobs_dir = '~/apps/azkaban/jobs'
+logs_dir = '~/apps/azkaban/logs'
+days_to_keep=14
 backup_dir = '/tmp/azkaban_backup'
 have_files_to_backup=False
 
@@ -136,7 +137,11 @@ def backup_old_log_files(logs_dir, backup_dir):
                 
 
 def main():
-
+    
+    print '####################################'
+    print '######### BACKUP - begin ###########'
+    print '####################################'
+    
 #    option_parser = optparse.OptionParser()
 #    
 #    #  p.add_option('--dryRun', '-d') 
@@ -146,12 +151,12 @@ def main():
 #    options, arguments = option_parser.parse_args()
     
     if os.name == 'nt':
-        print 'Looks like you\'re running Windows OS. Script was not tested in Windows so I better exit. If you still need to run it just comment out OS check'
-        sys.exit()
+        print 'ERROR: Looks like you\'re running Windows OS. Script was not tested in Windows so I better exit. If you still need to run it just comment out OS check'
+        sys.exit(-1)
         
     if not os.path.exists(backup_dir): 
-        print 'ERROR -- Backup directory does not exist: %s' % backup_dir
-        sys.exit()
+        print 'ERROR: Backup directory does not exist: %s' % backup_dir
+        sys.exit(-1)
     
     paths = init_backup_dirs(backup_dir)
 
@@ -166,6 +171,10 @@ def main():
         
     exec_dir = os.path.join(jobs_dir, 'executions')
     print 'Executions dir = %s' % exec_dir
+    
+    if not os.path.exists(exec_dir):
+        print 'ERROR: Executions dir does not exist = %s' % exec_dir
+        sys.exit(-1)
     
     print '*** Backing up old execution files - begin ***'
     backup_old_execution_files(exec_dir, paths[1])
@@ -182,11 +191,20 @@ def main():
     if not have_files_to_backup:
         print 'Nothing was backed up - removing backup dir = %s' % paths[2] 
         shutil.rmtree(paths[2])
+    else:
+        tar_file_path = paths[2]+'.tar.gz'
+        print 'Creating tar.gz archive = %s' % tar_file_path
+        tar = tarfile.open(tar_file_path,'w:gz')
+        tar.add(paths[2],arcname=paths[2].split(os.sep)[-1])
+        tar.close()
+        print 'Removing backup dir = %s' % paths[2] 
+        shutil.rmtree(paths[2])
+        
+    print '####################################'
+    print '######### BACKUP - end   ###########'
+    print '####################################'
         
 # Running
-
 if __name__ == '__main__':
     main()
-#    print is_execution_file('/Users/aogonevskiy/apps/jobs/executions/1.json')
-#    print is_execution_file('/Users/aogonevskiy/apps/jobs/executions/1.exe')
-#    print is_execution_file('/Users/aogonevskiy/apps/jobs/executions/A123.json')
+
