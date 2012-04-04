@@ -145,6 +145,10 @@ def main():
 #    option_parser.add_option("-j", "--jobs", dest="jobs_dir", help="Azkaban's jobs directory", metavar="JOBS_DIR")
 #    options, arguments = option_parser.parse_args()
     
+    if os.name == 'nt':
+        print 'Looks like you\'re running Windows OS. Script was not tested in Windows so I better exit. If you still need to run it just comment out OS check'
+        sys.exit()
+        
     if not os.path.exists(backup_dir): 
         print 'ERROR -- Backup directory does not exist: %s' % backup_dir
         sys.exit()
