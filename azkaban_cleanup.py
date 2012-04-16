@@ -128,9 +128,13 @@ def backup_old_log_files(logs_dir, backup_dir):
             
             # adding job name to the target_path
             target_path = os.path.join(backup_dir,f.split('/')[-2])
+            if not os.path.exists(target_path):
+                os.makedirs(target_path)
             
             print 'Moving %s to %s' % (f,target_path)
-            shutil.move(f,target_path)
+            # shutil.move is acting wierd on redhat (Python 2.4.3). had to replace it with system call
+            # shutil.move(f,target_path)
+            os.system('mv %s %s' % (f,target_path))
             
             have_files_to_backup=True
             
@@ -165,7 +169,7 @@ def main():
     jobs_dir=options.jobs_dir
     logs_dir=options.logs_dir
     backup_dir = options.backup_dir
-    days_to_keep = options.days_to_keep
+    days_to_keep = int(options.days_to_keep)
 
     print '####################################'
     print '######### BACKUP - begin ###########'
